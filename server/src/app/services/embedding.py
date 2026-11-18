@@ -1,16 +1,10 @@
 from app.services.ai import AI
+from app.core.tokenization import split_into_token_chunks
 
-def chunk_text(text: str, chunk_size: int = 600, overlap: int = 100) -> list[str]:
-    """Splits raw text into clean, overlapping character chunks."""
-    if not text:
-        return []
-    text = text.strip()
-    chunks, start, text_length = [], 0, len(text)
-    while start < text_length:
-        end = start + chunk_size
-        chunks.append(text[start:end].strip())
-        start += chunk_size - overlap
-    return [c for c in chunks if c]
+
+def chunk_text(text: str, chunk_size: int = 500, overlap: int = 80) -> list[str]:
+    """Split text into overlapping chunks measured with the configured tokenizer."""
+    return split_into_token_chunks(text, chunk_size=chunk_size, overlap=overlap)
 
 def generate_embedding(text: str) -> list[float]:
     return AI.embed_text(text)

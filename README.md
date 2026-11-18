@@ -49,8 +49,20 @@ Frontend runs at [http://localhost:5173](http://localhost:5173)
 | LLM Generation | NVIDIA NIM | nvidia/nemotron-3.5-lightning-30b-a3b
 
 ### Asynchronous Background Processing
-* Handles url parsing, document chunking and embedding generation via lightweight asynchronous background tasks.
-* Tradeoff: API response is quick, but for prod requires separate deployment of tasks as event functions that can be triggered via queues.
+* URL fetching, document chunking, and embedding generation run as in-process FastAPI background tasks after the ingest response.
+* Tradeoff: this keeps local setup simple, but tasks are not durable across process restarts and share the API process. Production should use a persistent queue and separate workers.
+
+### Token and Conversation Limits
+* Text and URL values submitted to `POST /ingest` are limited to 2,000 characters. Extracted URL text is capped at 10,000 characters.
+* Content is split into 500-token chunks with 80-token overlap using `tiktoken` (`cl100k_base`); a chunk may exceed the target by a few tokens to keep a Unicode character intact. LangChain is not required.
+* The server keeps up to 20 recent user/assistant turns in a single in-memory array. The client sends only the current question; chat history is cleared when the backend process restarts.
+* Before each LLM call, the server counts the system prompt, stored history, question, and retrieved context against a 7,168-token input budget, dropping the oldest complete turns first and then the lowest-ranked context as needed. The LLM response is capped at 1,024 tokens.
+* `cl100k_base` is a practical tokenizer for budgeting, but is not NVIDIA Nemotron's tokenizer. The budget is deliberately conservative; exact provider-side token accounting may differ.
+* Chat history is not stored in SQLite or indexed as embeddings. It remains in backend memory only and is lost on server restart.
+
+### Scope and Limitations
+* The ingest UI and API support plain text notes and URLs only. Fetched page text is stored in the embedding records; the content record retains the original URL.
+* Chat history is local to the running backend process and shared by clients using that process. User accounts, durable chat transcripts, YouTube/PDF ingestion, and durable background jobs are outside the current implementation.
 
 ## Project Structure
 ```
@@ -75,6 +87,6 @@ project/
 All endpoints adhere to a standardized StandardResponse envelope (success, message, data, pagination):
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | /ingest | Ingests text, and URLs; triggers background vector embedding using Jina. |
+| POST | /ingest | Accepts a plain-text note or URL (maximum request value: 2,000 characters) and starts background embedding using Jina. |
 | GET | /items | Retrieves paginated knowledge base items. |
-| POST | /query | Executes vector similarity search and queries NVIDIA NIM to return cited answers. |
+| POST | /query | Executes vector similarity search, sends the recent conversation history and retrieved context to NVIDIA NIM, and returns cited answers. |

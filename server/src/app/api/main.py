@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,26 +6,36 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.endpoints.inbox import router as inbox_router
 from app.api.v1.endpoints.assistant import router as assistant_router
 from app.core.database import Base, SessionLocal, engine
-from app.core.similarity import fetch_vector_data_into_memory
+from app.core.memory import fetch_vector_data_into_memory
 from app.services.ai import AI
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-  # 1. Create SQLite tables if they don't exist
-  Base.metadata.create_all(bind=engine)
-
-  # 2. Hydrate in-memory vector store from SQLite
-  db = SessionLocal()
   try:
-    fetch_vector_data_into_memory(db)
-  finally:
-    db.close()
+    Base.metadata.create_all(bind=engine)
 
-  yield
-  AI.close()
+    db = SessionLocal()
+    try:
+      fetch_vector_data_into_memory(db)
+    finally:
+      db.close()
+  except Exception:
+    logger.exception("Backend startup initialization failed.")
+    raise
+
+  try:
+    yield
+  finally:
+    try:
+      AI.close()
+    except Exception:
+      logger.exception("Could not close AI provider clients during shutdown.")
+      raise
 
 
 app = FastAPI(title="AI Knowledge Inbox API", lifespan=lifespan)

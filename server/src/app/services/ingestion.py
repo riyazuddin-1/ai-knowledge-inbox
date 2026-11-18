@@ -1,9 +1,6 @@
 from sqlalchemy.orm import Session
-from app.models.content import ContentType, ContentStatus
-from app.repositories.content import add_title, create, update_status
-from app.repositories.embedding import create_embedding
-from app.core.similarity import add_to_similarity_index
-from app.services.ai import AI
+from app.models.content import ContentType
+from app.repositories.content import add_title, create
 
 def create_inbox_item(db: Session, content_type: ContentType, data: str):
     """Business logic for creating a new inbox record and setting its initial title."""

@@ -56,8 +56,6 @@ function AddKnowledgeModal({ isOpen, onClose, onIngestSuccess }) {
           >
             <option value="url">URL</option>
             <option value="text">Text</option>
-            <option value="youtube">YouTube</option>
-            <option value="pdf">PDF</option>
           </select>
         </div>
 
@@ -70,6 +68,7 @@ function AddKnowledgeModal({ isOpen, onClose, onIngestSuccess }) {
               rows={5}
               autoFocus
               value={ingestData}
+              maxLength={2000}
               onChange={(e) => setIngestData(e.target.value)}
               placeholder="Paste text content..."
               className="bg-background border border-highlight rounded-lg px-3 py-2 text-sm outline-none resize-none"
@@ -79,6 +78,7 @@ function AddKnowledgeModal({ isOpen, onClose, onIngestSuccess }) {
               type="text"
               autoFocus
               value={ingestData}
+              maxLength={200}
               onChange={(e) => setIngestData(e.target.value)}
               placeholder={`Enter ${ingestType}...`}
               className="bg-background border border-highlight rounded-lg px-3 py-2 text-sm outline-none"

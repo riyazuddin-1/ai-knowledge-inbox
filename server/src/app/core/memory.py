@@ -1,9 +1,34 @@
 import json
+from threading import Lock
+
 import numpy as np
+from app.repositories.embedding import get_all_embeddings
 
 # In-memory storage for vectors and their metadata
 _VECTOR_INDEX = []
 _METADATA_INDEX = []
+_CHAT_HISTORY: list[dict[str, str]] = []
+_CHAT_HISTORY_LOCK = Lock()
+MAX_CHAT_HISTORY_MESSAGES = 40
+
+
+def get_chat_history() -> list[dict[str, str]]:
+    """Return a snapshot of recent chat messages held in process memory."""
+    with _CHAT_HISTORY_LOCK:
+        return _CHAT_HISTORY.copy()
+
+
+def add_chat_turn(question: str, answer: str) -> None:
+    """Keep only the latest complete question/answer turns in process memory."""
+    with _CHAT_HISTORY_LOCK:
+        _CHAT_HISTORY.extend(
+            (
+                {"role": "user", "content": question},
+                {"role": "assistant", "content": answer},
+            )
+        )
+        if len(_CHAT_HISTORY) > MAX_CHAT_HISTORY_MESSAGES:
+            del _CHAT_HISTORY[: len(_CHAT_HISTORY) - MAX_CHAT_HISTORY_MESSAGES]
 
 def fetch_vector_data_into_memory(db):
     """Loads existing embeddings from SQLite into RAM on startup."""
@@ -12,7 +37,7 @@ def fetch_vector_data_into_memory(db):
     _VECTOR_INDEX = []
     _METADATA_INDEX = []
     
-    embeddings = db.query(Embedding).all()
+    embeddings = get_all_embeddings(db)
     for emb in embeddings:
         # Parse the embedding that comes as a JSON string
         vector_data = emb.embedding
