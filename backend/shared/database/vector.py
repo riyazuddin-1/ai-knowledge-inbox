@@ -1,1 +1,0 @@
-# Using same sqlite connection for vector data storage
