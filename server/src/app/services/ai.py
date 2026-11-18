@@ -34,10 +34,10 @@ class AIClient:
                 temperature=0.2,
                 max_tokens=1024,
             )
-            
+
             if not response.choices:
                 raise ValueError("NVIDIA NIM returned no choices in response.")
-                
+
             choice = response.choices[0]
             message = choice.message
             
